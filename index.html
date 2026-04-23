@@ -885,7 +885,7 @@ async function saveP1(){
 async function saveP1Discuss(){
   const text=document.getElementById('p1-discuss').value.trim();
   if(!text){alert('토의 내용을 작성해주세요.');return;}
-  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p1',{name:ME.name,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
+  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p1',{name:ME.name,num:ME.num||0,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
   lsSet('p1d',text);toast('✅ 실습1-1 토의 공유 완료!');
 }
 
@@ -949,7 +949,7 @@ async function saveP2(){
 async function saveP2Discuss(){
   const text=document.getElementById('p2-discuss').value.trim();
   if(!text){alert('토의 내용을 작성해주세요.');return;}
-  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p2',{name:ME.name,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
+  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p2',{name:ME.name,num:ME.num||0,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
   lsSet('p2d',text);toast('✅ 실습1-2 토의 공유 완료!');
 }
 
@@ -998,7 +998,7 @@ async function saveP3(){
 async function saveP3Discuss(){
   const text=document.getElementById('p3-discuss').value.trim();
   if(!text){alert('토의 내용을 작성해주세요.');return;}
-  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p3',{name:ME.name,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
+  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p3',{name:ME.name,num:ME.num||0,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
   lsSet('p3d',text);toast('✅ 실습2 토의 공유 완료!');
 }
 
@@ -1046,7 +1046,7 @@ async function saveP4(){
 async function saveP4Discuss(){
   const text=document.getElementById('p4-discuss').value.trim();
   if(!text){alert('성찰 내용을 작성해주세요.');return;}
-  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p4',{name:ME.name,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
+  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p4',{name:ME.name,num:ME.num||0,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
   lsSet('p4d',text);toast('✅ 실습3 성찰 공유 완료!');
 }
 
@@ -1080,7 +1080,7 @@ async function saveP5(){
 async function saveP5Discuss(){
   const text=document.getElementById('p5-discuss').value.trim();
   if(!text){alert('성찰 내용을 작성해주세요.');return;}
-  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p5',{name:ME.name,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
+  await dbSet('discusses/'+CODE+'/'+ME.memberKey+'/p5',{name:ME.name,num:ME.num||0,groupName:ME.groupName,groupIdx:ME.groupIdx,text,ts:Date.now()});
   lsSet('p5d',text);toast('✅ 실습4 성찰 공유 완료!');
 }
 
@@ -1222,7 +1222,7 @@ function renderDashMembers(el,mList){
 
 function renderDashP1(el,mList,eMap,dMap){
   if(!mList.length){el.innerHTML='<div class="emp"><div class="ic">📭</div><p>데이터 없음</p></div>';return;}
-  mList.sort((a,b)=>(a.groupName>b.groupName?1:-1)||(a.num||0)-(b.num||0));
+  mList.sort((a,b)=>{ const ga=parseInt(a.groupName)||0, gb=parseInt(b.groupName)||0; return ga!==gb?ga-gb:(a.num||0)-(b.num||0); });
   const mk=m=>m.memberKey||m.groupId+'_'+m.name;
   let h='<p style="font-size:.74rem;color:var(--muted);margin-bottom:10px">정성준거 성취수준 (1~40번 학생)</p>';
   h+='<div style="overflow-x:auto"><table class="ct"><thead><tr><th>번호</th>';
@@ -1242,7 +1242,7 @@ function renderDashP1(el,mList,eMap,dMap){
 
 function renderDashP2(el,mList,eMap,dMap){
   if(!mList.length){el.innerHTML='<div class="emp"><div class="ic">📭</div><p>데이터 없음</p></div>';return;}
-  mList.sort((a,b)=>(a.groupName>b.groupName?1:-1)||(a.num||0)-(b.num||0));
+  mList.sort((a,b)=>{ const ga=parseInt(a.groupName)||0, gb=parseInt(b.groupName)||0; return ga!==gb?ga-gb:(a.num||0)-(b.num||0); });
   const mk=m=>m.memberKey||m.groupId+'_'+m.name;
 
   // ── 개인별 일치도 카드 ──
@@ -1305,23 +1305,58 @@ function renderDashP2(el,mList,eMap,dMap){
 }
 
 function renderDashDiscuss(el,dMap,key,title){
-  const colorMap={p3:'var(--p3)',p4:'var(--p4)',p5:'var(--p4)'};
-  const list=Object.values(dMap)
+  const colorMap={p1:'var(--p1)',p2:'var(--p2)',p3:'var(--p3)',p4:'var(--p4)',p5:'var(--p4)'};
+  const color=colorMap[key]||'var(--accent)';
+
+  const allList=Object.values(dMap)
     .map(d=>d[key])
     .filter(Boolean)
-    .sort((a,b)=>a.ts-b.ts);
-  if(!list.length){el.innerHTML=`<div class="emp"><div class="ic">📝</div><p>아직 작성된 내용이 없습니다.<br><span style="font-size:.78rem">연수생이 작성 완료하면 자동으로 표시됩니다.</span></p></div>`;return;}
-  el.innerHTML=`<p style="font-size:.76rem;color:var(--muted);margin-bottom:12px">${list.length}명 작성 완료 · 실시간 업데이트</p>`
-    +list.map(d=>`<div class="refl-card" style="border-left:3px solid ${colorMap[key]||'var(--accent)'}">
-      <div class="refl-h">
-        <div class="refl-av" style="background:${colorMap[key]||'var(--accent)'}">${d.name[0]}</div>
-        <div>
-          <div class="refl-name">${d.name}</div>
-          <div class="refl-group">${d.groupName} · ${new Date(d.ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</div>
+    .sort((a,b)=>{
+      const ga=parseInt(a.groupName)||0, gb=parseInt(b.groupName)||0;
+      return ga!==gb ? ga-gb : (a.num||0)-(b.num||0);
+    });
+
+  if(!allList.length){
+    el.innerHTML='<div class="emp"><div class="ic">📝</div><p>아직 작성된 내용이 없습니다.<br><span style="font-size:.78rem">연수생이 작성 완료하면 자동으로 표시됩니다.</span></p></div>';
+    return;
+  }
+
+  const groups=['전체 모둠',...new Set(
+    allList.map(d=>d.groupName)
+      .sort((a,b)=>(parseInt(a)||0)-(parseInt(b)||0))
+  )];
+
+  const filterId='df-'+key;
+
+  window['_rdc_'+key]=function(fg){
+    const list=fg==='전체 모둠'?allList:allList.filter(d=>d.groupName===fg);
+    if(!list.length) return '<div class="emp" style="padding:20px"><p style="font-size:.82rem">해당 모둠의 성찰이 없습니다.</p></div>';
+    return list.map(d=>`
+      <div class="refl-card" style="border-left:3px solid ${color}">
+        <div class="refl-h">
+          <div class="refl-av" style="background:${color}">${d.name[0]}</div>
+          <div>
+            <div class="refl-name">${d.groupName} ${d.num||''}번 · ${d.name}</div>
+            <div class="refl-group">${new Date(d.ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 작성</div>
+          </div>
         </div>
+        <div class="refl-text">${d.text}</div>
+      </div>`).join('');
+  };
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:.78rem;color:var(--muted)">${allList.length}명 작성 완료 · 실시간 업데이트</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <label style="font-size:.78rem;color:var(--muted);margin-bottom:0">모둠 필터</label>
+        <select id="${filterId}" style="margin-bottom:0;width:auto;padding:5px 12px;font-size:.82rem"
+          onchange="document.getElementById('${filterId}-cards').innerHTML=window['_rdc_${key}'](this.value)">
+          ${groups.map(g=>`<option>${g}</option>`).join('')}
+        </select>
       </div>
-      <div class="refl-text">${d.text}</div>
-    </div>`).join('');
+    </div>
+    <div id="${filterId}-cards">${window['_rdc_'+key]('전체 모둠')}</div>
+  `;
 }
 
 </script>
