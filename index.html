@@ -840,9 +840,22 @@ async function init(){
     const sess=await dbGet('sessions/'+saved.code);
     if(sess){
       SESSION=sess;ME=saved;CODE=saved.code;
-      updateBadges();renderTrDone();setTab('t');
+      updateBadges();await renderTrDone();setTab('t');
+      // 자동으로 마지막 작업 실습으로 이동
+      const existing=await dbGet('entries/'+saved.code+'/'+saved.memberKey);
+      if(existing){
+        let lastPhase=1;
+        if(existing.p1)lastPhase=1;
+        if(existing.p2)lastPhase=2;
+        if(existing.p3)lastPhase=3;
+        if(existing.p4)lastPhase=4;
+        if(existing.p5)lastPhase=5;
+        setTimeout(()=>{
+          toast('✅ 자동 재접속 완료! 이전 작업이 유지됩니다.', 2500);
+          goP(lastPhase);
+        }, 400);
+      }
     } else {
-      // 세션이 더 이상 존재하지 않으면 전체 초기화
       clearAllLocalData();
     }
   }
@@ -1104,12 +1117,39 @@ async function joinSession(){
   const mk = selG.id+'_'+num+'_'+name;
   ME = { name, num:parseInt(num), groupId:selG.id, groupName:selG.name, groupIdx:selG.ci, memberKey:mk, code:CODE };
   lsSet('my_id_v2', ME);
+
+  // 기존 데이터 확인 (재입장 여부 판단)
+  const existing = await dbGet('entries/'+CODE+'/'+mk);
+  const isRejoining = !!existing;
+
+  // Firebase members 업데이트
   await dbSet('members/'+CODE+'/'+mk, {
     name, num:parseInt(num), groupId:selG.id, groupName:selG.name, groupIdx:selG.ci, memberKey:mk, ts:Date.now()
   });
-  renderTrDone(); updateBadges(); toast('✅ '+selG.name+' '+num+'번 · '+name+' 입장!');
+
+  await renderTrDone(); updateBadges();
+
+  if(isRejoining){
+    // 재입장: 이전 실습 내용 자동 복원 + 마지막 실습 위치로 이동
+    const restored=[];
+    let lastPhase=1;
+    if(existing.p1){restored.push('실습1-1');lastPhase=1;}
+    if(existing.p2){restored.push('실습1-2');lastPhase=2;}
+    if(existing.p3){restored.push('실습2');lastPhase=3;}
+    if(existing.p4){restored.push('실습3');lastPhase=4;}
+    if(existing.p5){restored.push('실습4');lastPhase=5;}
+    toast('✅ 재입장 완료! 이전 작업이 유지됩니다.', 3000);
+    if(restored.length){
+      setTimeout(()=>{
+        toast('📂 복원: '+restored.join(', ')+' → 이어서 진행하세요!', 3500);
+        goP(lastPhase);
+      }, 800);
+    }
+  } else {
+    toast('✅ '+selG.name+' '+num+'번 · '+name+' 입장!');
+  }
 }
-function renderTrDone(){
+async function renderTrDone(){
   if(!ME)return;
   document.getElementById('pt-form').classList.add('hidden');
   document.getElementById('pt-info').classList.remove('hidden');
